@@ -4,9 +4,17 @@ import os
 
 RANKEDENDPOINT = "https://api.mcsrranked.com/"
 
-USERNAME = "kietl"
-UUID = requests.get(RANKEDENDPOINT + "users/" + USERNAME).json().get("data").get("uuid")
+with open("player.txt","r") as f:
+    lines = f.readlines()
 
+if len(lines) < 1:
+    raise Exception("No username set in player.txt")
+USERNAME = lines[0].strip()
+if len(lines) < 2:
+    UUID = requests.get(RANKEDENDPOINT + "users/" + USERNAME).json().get("data").get("uuid")
+    with open("player.txt","w") as f:
+        f.writelines([USERNAME,"\n",UUID])
+    
 FILENAME = "rawdata.csv"
 
 
@@ -80,7 +88,7 @@ response = requests.get(
 json = response.json()
 
 if json.get("status", None) != "success":
-    raise Exception("failed to get match data")
+    raise Exception("failed to get match data: ", json)
 data = json.get("data",None)
 
 
