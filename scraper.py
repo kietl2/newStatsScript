@@ -7,46 +7,8 @@ RANKEDENDPOINT = "https://api.mcsrranked.com/"
 USERNAME = "kietl"
 UUID = requests.get(RANKEDENDPOINT + "users/" + USERNAME).json().get("data").get("uuid")
 
-FILENAME = "data.csv"
+FILENAME = "rawdata.csv"
 
-
-if not os.path.exists(FILENAME):
-    df = pd.DataFrame(columns=[
-        "matchID",      "date",         "matchType", 
-        "seed",         "category",     "gameMode", 
-        "players",      "spectators",   "result", 
-        "forfeited",    "decayed",      "rank", 
-        "vod",          "changes",      "completions", 
-        "timelines",    "beginner",     "botSource", 
-        "replaySize",   "season",       "replayExists", 
-        "tag",          "overworld",    "bastion"
-        ])
-    df.to_csv(FILENAME,index=False)
-    print(df)
-
-
-
-def gatherBasicData():
-    # gather all my match data from ranked api
-    response = requests.get(
-        RANKEDENDPOINT + "users/" + USERNAME + "/matches", 
-        params = {
-            "count": 100
-        }
-    )
-    data = response.json()
-
-    if data.get("status", None) != "success":
-        raise Exception("failed to get match data")
-    return data.get("data",None)
-
-def parseMatchList(data):
-    matches = []
-    for match in data:
-        matchId = match.get("id", None)
-        response = requests.get(RANKEDENDPOINT + "matches/" + str(matchId))
-        matchData = response.json().get("data")
-        matches.append(Match(matchData))
 
 class Match():
     def __init__(self, matchData) -> None:
@@ -75,7 +37,7 @@ class Match():
         self.overworld = matchData.get("seedType", None)
         self.bastion = matchData.get("bastionType", None)
 
-        values = [
+        self.values = [
             self.id,        self.date,      self.matchType, 
             self.seed,      self.category,  self.gameMode, 
             self.players,   self.spectators,self.result, 
@@ -86,9 +48,6 @@ class Match():
             self.tag,       self.overworld, self.bastion,
         ]
 
-        df = pd.read_csv(FILENAME)
-        df.add(pd.DataFrame(values))
-        df.to_csv(FILENAME,index=False)
 
     def parseMatchType(self,matchType):
         return {1: "Casual", 2: "Ranked", 3: "Private room", 4: "Event Mode"}.get(matchType, "Unknown")
@@ -111,5 +70,43 @@ class Match():
         return times
 
 
-data = gatherBasicData()
-parseMatchList(data)
+# Gather all my match data from ranked api
+response = requests.get(
+    RANKEDENDPOINT + "users/" + USERNAME + "/matches", 
+    params = {
+        "count": 100
+    }
+)
+json = response.json()
+
+if json.get("status", None) != "success":
+    raise Exception("failed to get match data")
+data = json.get("data",None)
+
+
+if not os.path.exists(FILENAME):
+    df = pd.DataFrame(columns=[
+        "matchID",      "date",         "matchType", 
+        "seed",         "category",     "gameMode", 
+        "players",      "spectators",   "result", 
+        "forfeited",    "decayed",      "rank", 
+        "vod",          "changes",      "completions", 
+        "timelines",    "beginner",     "botSource", 
+        "replaySize",   "season",       "replayExists", 
+        "tag",          "overworld",    "bastion"
+        ])
+    df.to_csv(FILENAME,index=False)
+
+df = pd.read_csv(FILENAME)
+
+# Parse into match class which puts data into pandas df
+# and then into data.csv
+for m in data:
+    matchId = m.get("id", None)
+    knownIds = df.get("matchID")
+    if knownIds is None or matchId not in [int(k) for k in knownIds]:
+        response = requests.get(RANKEDENDPOINT + "matches/" + str(matchId))
+        matchData = response.json().get("data")
+        values = Match(matchData).values
+        df.loc[len(df)] = values
+df.to_csv(FILENAME,index=False)
