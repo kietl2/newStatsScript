@@ -1,4 +1,6 @@
 import pandas as pd
 
-df = pd.read_csv("data.csv")
-print(df.loc[0])
+FILENAME = "rawdata.csv"
+
+df = pd.read_csv(FILENAME)
+print(df.loc[df['matchType'] == "Private room"])
