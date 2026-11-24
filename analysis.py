@@ -26,7 +26,8 @@ else:
 
 df = pd.read_csv(FILENAME)
 
-print(df.get("completions"))
 # completion times
+for i in df['completions']:
+    print(i)
 completions = df.loc[any((i.get("uuid",None) == UUID) for i in df['completions'])]
 print(completions)
